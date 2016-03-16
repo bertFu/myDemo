@@ -1,0 +1,24 @@
+{
+  "name": "bower.json",
+  "description": "ng官方推荐的项目结构",
+  "main": "",
+  "authors": [
+    "bert <429874664@qq.com>"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/bertFu/myDemo",
+  "moduleType": [],
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "static/components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "^1.5.0",
+    "bootstrap": "^3.3.6"
+  }
+}
