@@ -14,7 +14,10 @@
     "start": "http-server -p 8000"
   },
   "dependencies": {
+    "connect-mongo": "^1.1.0",
+    "cookie": "^0.2.3",
     "express": "^4.13.4",
+    "mongoose": "^4.4.7",
     "socket.io": "^1.4.5"
   }
 }

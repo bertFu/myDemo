@@ -63,3 +63,102 @@ io.sockets.on('connection', function (socket) {
 })
 
 console.log('TechNode is on port ' + port + '!')
+
+
+// // ...
+// var Controllers = require('./controllers')
+
+// app.use(express.bodyParser())
+// app.use(express.cookieParser())
+// app.use(express.session({
+//   secret: 'technode',
+//   cookie:{
+//     maxAge: 60 * 1000
+//   }
+// }))
+
+// ...
+
+app.get('/api/validate', function (req, res) {
+  _userId = req.session._userId
+  if (_userId) {
+    Controllers.User.findUserById(_userId, function (err, user) {
+      if (err) {
+        res.json(401, {msg: err})
+      } else {
+        res.json(user)
+      }
+    })
+  } else {
+    res.json(401, null)
+  }
+})
+
+app.post('/api/login', function (req, res) {
+  email = req.body.email
+  if (email) {
+    Controllers.User.findByEmailOrCreate(email, function(err, user) {
+      if (err) {
+        res.json(500, {msg: err})
+      } else {
+        req.session._userId = user._id
+        res.json(user)
+      }
+    })
+  } else {
+    res.json(403)
+  }
+})
+
+app.get('/api/logout', function (req, res) {
+  req.session._userId = null
+  res.json(401)
+})
+
+// ...
+// var server = app.listen(port, function() {
+//   console.log('TechNode  is on port ' + port + '!')
+// })
+
+// var io = require('socket.io').listen(server)
+
+// io.set('authorization', function(handshakeData, accept) {
+//   handshakeData.cookie = Cookie.parse(handshakeData.headers.cookie)
+//   var connectSid = handshakeData.cookie['connect.sid']
+//   connectSid = parseSignedCookie(connectSid, 'technode')
+
+//   if (connectSid) {
+//     sessionStore.get(connectSid, function(error, session) {
+//       if (error) {
+//         accept(error.message, false)
+//       } else {
+//         // handshakeData.session = session
+//         if (session._userId) {
+//           accept(null, true)
+//         } else {
+//           accept('No login')
+//         }
+//       }
+//     })
+//   } else {
+//     accept('No session')
+//   }
+// })
+// ...
+// var parseSignedCookie = require('connect').utils.parseSignedCookie
+// var MongoStore = require('connect-mongo')(express)
+// var Cookie = require('cookie')
+
+// var sessionStore = new MongoStore({
+//   url: 'mongodb://localhost/technode'
+// })
+
+// app.use(express.bodyParser())
+// app.use(express.cookieParser())
+// app.use(express.session({
+//   secret: 'technode',
+//   cookie: {
+//     maxAge: 60 * 1000 * 60
+//   },
+//   store: sessionStore
+// }))
