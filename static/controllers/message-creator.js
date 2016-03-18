@@ -1,5 +1,6 @@
 angular.module('techNodeApp').controller('MessageCreatorCtrl', function($scope, socket) {
 //   $scope.newMessage = ''
+  
 //   $scope.createMessage = function () {
 //     if ($scope.newMessage == '') {
 //       return
@@ -11,9 +12,9 @@ angular.module('techNodeApp').controller('MessageCreatorCtrl', function($scope, 
 //     socket.emit('createMessage', $scope.newMessage)
 //     $scope.newMessage = ''
 //   }
+
  $scope.createMessage = function () {
-    // socket.emit('messages.create', {
-    socket.emit('createMessage', {
+    socket.emit('messagesCreate', {
       message: $scope.newMessage,
       creator: $scope.me
     })
