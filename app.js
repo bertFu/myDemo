@@ -4,119 +4,112 @@ var bodyParser = require('body-parser')
 var cookieParser = require('cookie-parser')
 var session = require('express-session')
 var app = express()
+var path = require('path')
 var port = process.env.PORT || 3000; //接收命令行启动参数用作服务器启动端口，没有参数则选择3000端口作为默认端口
 var Controllers = require('./controllers')
 var signedCookieParser = cookieParser('technode')
 var MongoStore = require('connect-mongo')(session)
 
 var sessionStore = new MongoStore({
-  url: 'mongodb://localhost/technode'
+    url: 'mongodb://localhost/technode'
 })
 
+/* 格式化body中的内容, */
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({
-  extended: true
+    extended: true
 }))
 app.use(cookieParser())
 app.use(session({
-  secret: 'technode',
-  resave: true,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 60 * 1000
-  },
-  store: sessionStore
+    secret: 'technode',
+    resave: true,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 60 * 1000
+    },
+    store: sessionStore
 }))
 
 /* express.static 设置node的静态文件夹，将所有的静态文件放在该文件夹下 */
 app.use(express.static(__dirname + '/static'))
 
+/* 判断`session`中的`_userId`，如果有返回Id，没有的话返回错误信息。 */
 app.get('/api/validate', function (req, res) {
-  _userId = req.session._userId
-  if (_userId) {
-    Controllers.User.findUserById(_userId, function (err, user) {
-      if (err) {
-        res.json(401, {msg: err})
-      } else {
-        res.json(user)
-      }
-    })
-  } else {
-    res.json(401, null)
-  }
-})
-
-app.post('/api/login', function(req, res) {
-  email = req.body.email
-  if (email) {
-    Controllers.User.findByEmailOrCreate(email, function(err, user) {
-      if (err) {
-        res.json(500, {
-          msg: err
+    _userId = req.session._userId
+    if (_userId) {
+        Controllers.User.findUserById(_userId, function (err, user) {
+            if (err) {
+                res.status(401).json({msg: err})
+            } else {
+                res.status(401).json({msg: err})
+            }
         })
-      } else {
-        req.session._userId = user._id
-        Controllers.User.online(user._id, function (err, user) {
-          if (err) {
-            res.json(500, {
-              msg: err
-            })
-          } else {
-            res.json(user)
-          }
-        })
-      }
-    })
-  } else {
-    res.josn(403)
-  }
-})
-
-// 退出操作
-// app.get('/api/logout', function (req, res) {
-//   req.session._userId = null
-//   res.json(401)
-// })
-
-app.get('/api/logout', function(req, res) {
-  _userId = req.session._userId
-  Controllers.User.offline(_userId, function (err, user) {
-    if (err) {
-      res.json(500, {
-        msg: err
-      })
     } else {
-      res.json(200)
-      delete req.session._userId
+        res.status(401).json({})
     }
-  })
+})
+
+/* 用户登入，如果该用户存在数据库中直接返回，否则包装`user对象`插入新数据，返回包装后的`user对象` */
+app.post('/api/login', function(req, res) {
+    email = req.body.email
+    if (email) {
+        Controllers.User.findByEmailOrCreate(email, function(err, user) {
+            if (err) {
+                res.status(500).json({msg: err})
+            } else {
+                req.session._userId = user._id
+                Controllers.User.online(user._id, function (err, user) {
+                    if (err) {
+                        res.status(500).json({msg: err})
+                    } else {
+                        res.status(200).json({})
+                    }
+                })
+            }
+        })
+    } else {
+        res.status(403).json({})
+    }
+})
+
+/* 提供给客户端退出时调用，设置用户为离线状态，成功设置后删除`session`中的`userId` */
+app.get('/api/logout', function(req, res) {
+    _userId = req.session._userId
+    Controllers.User.offline(_userId, function (err, user) {
+        if (err) {
+            res.status(500).json({msg: err})
+        } else {
+            res.status(200).json({})
+            delete req.session._userId
+        }
+    })
 })
 
 /* 将static文件夹下的index.html作为整个应用的启动页面；除静态文件请求外，其他所有的HTTP请求都将输出index.html文件；服务器不关心路由，所有的路由逻辑都交给Angular.js处理 */
 app.use(function (req, res) {
-    res.sendfile('./static/index.html')
+    // res.sendfile('./static/index.html')
+    res.sendFile(path.join(__dirname, './static/index.html'))
 })
 
-// var parseSignedCookie = require('connect').utils.parseSignedCookie
-// var MongoStore = require('connect-mongo')(session)
-// var Cookie = require('cookie')
-
+/* 开启`socket`服务 */
 var server = app.listen(port, function() {
-  console.log('TechNode  is on port ' + port + '!')
+    console.log('TechNode  is on port ' + port + '!')
 })
 
 var io = require('socket.io').listen(server)
 
+/* socket三次握手，判断用户信息 */
 io.set('authorization', function(handshakeData, accept) {
-
+    /* todo 这里的cook解析有问题所以导致没办法找到session，需要升入了解 */
     signedCookieParser(handshakeData, {}, function(err) {
         if (err) {
             accept(err, false)
         } else {
             sessionStore.get(handshakeData.signedCookies['connect.sid'], function(err, session) {
                 if (err) {
-                accept(err.message, false)
+                    accept(err.message, false)
                 } else {
+                    /* 无法获取到session数据，session为undefined */
                     handshakeData.session = session
                     if (session && session._userId) {
                         accept(null, true)
@@ -153,22 +146,22 @@ io.sockets.on('connection', function (socket) {
     
     socket.on('getRoom', function() {
         Controllers.User.getOnlineUsers(function (err, users) {
-        if (err) {
-            socket.emit('err', {msg: err})
-        } else {
-            socket.emit('roomData', {users: users, messages: messages})
-        }
+            if (err) {
+                socket.emit('err', {msg: err})
+            } else {
+                socket.emit('roomData', {users: users, messages: messages})
+            }
         })
     })
     
     _userId = socket.handshake.session && socket.handshake.session._userId
     Controllers.User.online(_userId, function(err, user) {
         if (err) {
-        socket.emit('err', {
+            socket.emit('err', {
             mesg: err
         })
         } else {
-        socket.broadcast.emit('online', user)
+            socket.broadcast.emit('online', user)
         }
     })
     socket.on('disconnect', function() {

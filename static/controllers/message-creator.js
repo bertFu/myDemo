@@ -14,10 +14,10 @@ angular.module('techNodeApp').controller('MessageCreatorCtrl', function($scope, 
 //   }
 
  $scope.createMessage = function () {
-    socket.emit('messagesCreate', {
-      message: $scope.newMessage,
-      creator: $scope.me
-    })
-    $scope.newMessage = ''
+        socket.emit('messagesCreate', {
+        message: $scope.newMessage,
+            creator: $scope.me
+        })
+        $scope.newMessage = ''
   }
 })
