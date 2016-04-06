@@ -1,0 +1,15 @@
+<div>
+    <button class="btn btn-info" ng-click="click()">我在最外层</button>
+</div>
+<div ng-controller="ParentCtrl">
+    <div>hello login</div>
+    <h2>{{text}}</h2>
+    <div ng-controller="SelfCtrl">
+        <button class="btn btn-info" ng-click="click()">我在中间层</button>
+        <div ng-controller="ChlidCtrl">
+            <button class="btn btn-success" ng-click="chlidClick()">chlidClick</button>   
+        </div>    
+    </div>
+    <div ng-controller="BroCtrl"></div>
+    <aaa></aaa>
+</div>
