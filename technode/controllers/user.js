@@ -49,3 +49,14 @@ exports.getOnlineUsers = function(callback) {
         online: true
     }, callback)
 }
+// 用户加入到某个房间后，服务端都广播这个事件
+exports.joinRoom = function (join, callback) {
+  db.User.findOneAndUpdate({
+    _id: join.user._id
+  }, {
+    $set: {
+      online: true,
+      _roomId: join.room._id
+    }
+  }, callback)
+}

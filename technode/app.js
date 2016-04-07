@@ -135,10 +135,22 @@ io.sockets.on('connection', function (socket) {
     
     /* 当用户创建消息时，向服务端发送createMessage事件，服务端把消息存放到messages数组中，并向所有的客户端广播messageAdded，有新的消息添加进来。 */
     socket.on('messagesCreate', function (message) {
-        messages.push(message) // 服务器记录信息
+        // messages.push(message) // 服务器记录信息
         
-        /* 将新的信息发送给接受用户 */
-        io.sockets.emit('messageAdded', message)
+        // /* 将新的信息发送给接受用户 */
+        // io.sockets.emit('messageAdded', message)
+        
+        // 服务端，需要将消息通过房间的形式，将消息广播开来：
+        Controllers.Message.create(message, function(err, message) {
+        if (err) {
+            socket.emit('err', {
+                msg: err
+            })
+        } else {
+            socket.in(message._roomId).broadcast.emit('messageAdded', message)
+            socket.emit('messageAdded', message)
+        }
+    })
     })
     
     /* 提供房间的信息 */
@@ -164,15 +176,125 @@ io.sockets.on('connection', function (socket) {
     })
     /* 断开连接，将user状态设置为离线，将离线的用户信息发送给客户端 */
     socket.on('disconnect', function() {
-        var _userId = socket.request.session._userId
+        // var _userId = socket.request.session._userId
+        // Controllers.User.offline(_userId, function(err, user) {
+        //     if (err) {
+        //         socket.emit('err', {mesg: err})
+        //     } else {
+        //         socket.broadcast.emit('offline', user)
+        //     }
+        // })
+        
+        // 用户断网了，或者是刷新网页， 关闭网页，即socket断开了；
         Controllers.User.offline(_userId, function(err, user) {
             if (err) {
-                socket.emit('err', {mesg: err})
+                socket.emit('err', {
+                    mesg: err
+                })
             } else {
-                socket.broadcast.emit('offline', user)
+                // 用户断开后，如果他正在某个房间中，通知在该房间的客户端，该用户已经离开了。
+                // console.log('user');
+                // console.log(user);
+                if (user && user._roomId) {
+                        socket.in(user._roomId).broadcast.emit('leaveRoom', user)
+                        socket.in(user._roomId).broadcast.emit('messageAdded', {
+                        content: user.name + '离开了聊天室',
+                        creator: SYSTEM,
+                        createAt: new Date(),
+                        _id: ObjectId()
+                    })
+                    Controllers.User.leaveRoom({user: user}, function() {})
+                }
             }
         })
     });
+    // 服务端处理用户离开
+    socket.on('leaveRoom', function(leave) {
+        Controllers.User.leaveRoom(leave, function(err) {
+            if (err) {
+                socket.emit('err', {
+                    msg: err
+                })
+            } else {
+            socket.in(leave.room._id).broadcast.emit('messageAdded', {
+                content: leave.user.name + '离开了聊天室',
+                creator: SYSTEM,
+                createAt: new Date(),
+                _id: ObjectId()
+            })
+            socket.leave(leave.room._id)
+            io.sockets.emit('leaveRoom', leave)
+            }
+        })
+    })
+    // 新建房间
+    socket.on('createRoom', function (room) {
+        Controllers.Room.create(room, function (err, room) {
+            if (err) {
+                socket.emit('err', {msg: err})
+            } else {
+                io.sockets.emit('roomAdded', room)
+            }
+        })
+    })
+
+    // sockets.on('getAllRooms', function () {
+    //     Controllers.Room.read(function (err, rooms) {
+    //         if (err) {
+    //             socket.emit('err', {msg: err})
+    //         } else {
+    //             socket.emit('roomsData', rooms)
+    //         }
+    //     })
+    // })
+    
+    // 修改getAllRooms的socket响应，如果客户端的请求数据中包含_roomId的话，就读取单独房间的数据，而不是读取所有的房间。
+    socket.on('getAllRooms', function(data) {
+        if (data && data._roomId) {
+            Controllers.Room.getById(data._roomId, function(err, room) {
+                if (err) {
+                        socket.emit('err', {
+                        msg: err
+                    })
+                } else {
+                    socket.emit('roomData.' + data._roomId, room)
+                }
+            })
+        } else {
+            Controllers.Room.read(function(err, rooms) {
+                if (err) {
+                        socket.emit('err', {
+                        msg: err
+                    })
+                } else {
+                    socket.emit('roomsData', rooms)
+                }
+            })
+        }
+    })
+    
+    // socket.on('joinRoom', function(join) {
+    //     Controllers.User.joinRoom(join, function(err) {
+    //         if (err) {
+    //             socket.emit('err', {
+    //                 msg: err
+    //             })
+    //         } else {
+    //             socket.join(join.room._id)
+    //             // 通知客户端，这次加入房间成功了，可以跳转至房间了；
+    //             socket.emit('joinRoom.' + join.user._id, join)
+    //             // 因为之前加入了一个socket的房间，即对这个房间的其他socket广播，发了一条消息，有一个新的用户进入了聊天室，在其他客户端的聊天室页面，即可以看到这条系统通知
+    //             socket.in(join.room._id).broadcast.emit('messageAdded', {
+    //                 content: join.user.name + '进入了聊天室',
+    //                 creator: SYSTEM,
+    //                 createAt: new Date(),
+    //                 _id: ObjectId()
+    //             })
+    //             // 这条消息则是通知客户端的有新的用户加入了房间，客户端的房间列表页和房间页则监听这个事件更新对应的用户列表。
+    //             socket.in(join.room._id).broadcast.emit('joinRoom', join)
+    //         }
+    //     })
+    // })
 })
 
 

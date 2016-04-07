@@ -1,12 +1,26 @@
-var mongoose = require('mongoose')
-var Schema = mongoose.Schema
+// var mongoose = require('mongoose')
+// var Schema = mongoose.Schema
   
 
+// var User = new Schema({
+//     email: String,
+//     name: String,
+//     avatarUrl: String,
+//     online: Boolean
+// });
+
+// module.exports = User
+
+var mongoose = require('mongoose')
+var Schema = mongoose.Schema,
+    ObjectId = Schema.ObjectId
+
 var User = new Schema({
-    email: String,
-    name: String,
-    avatarUrl: String,
-    online: Boolean
+  email: String,
+  name: String,
+  avatarUrl: String,
+  _roomId: ObjectId,
+  online: Boolean
 });
 
 module.exports = User
